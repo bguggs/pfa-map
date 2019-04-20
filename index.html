@@ -37,9 +37,10 @@
 <body>
 <div id="floating-panel">
     <input onclick="showMarkers();" type=button value="Show All">
+    <input onclick="showFutureEvents();" type=button value="Show Future">
     <input onclick="showMeetAndGreets();" type=button value="Meet And Greets">
     <input onclick="showHouseParties();" type=button value="House Parties">
-
+showFutureEvents
 </div>
 <div id="map"></div>
 <script>
@@ -71,11 +72,11 @@
                         const event_lat = event['location']['location']['latitude'];
                         const event_lng = event['location']['location']['longitude'];
                         const event_loc = new google.maps.LatLng(event_lat, event_lng);
-                        createMapMarker(event_loc, map, infostring, event_type);
+                        createMapMarker(event_loc, map, infostring, event_type, event_timestamp, event_date);
 
                     } else {
                         const event_zip = event['location']['postal_code'];
-                        createMapMarkerFromQuery(event_zip, geocoder, map, infostring, event_type);
+                        createMapMarkerFromQuery(event_zip, geocoder, map, infostring, event_type, event_timestamp, event_date);
                     }
 
                 });
@@ -100,7 +101,7 @@
         return `${month} ${date}, ${year}`;
     }
 
-    function createMapMarker(latlng, resultsMap, infostring, category) {
+    function createMapMarker(latlng, resultsMap, infostring, category, event_timestamp, event_date) {
         let icon_url =  "http://maps.google.com/mapfiles/ms/icons/gray-dot.png";
         if (category === "MEET_GREET") {
             icon_url = "http://maps.google.com/mapfiles/ms/icons/blue.png";
@@ -109,8 +110,10 @@
         }
         var marker = new google.maps.Marker({
             map: resultsMap,
+            label: event_date,
             position: latlng,
             category: category,
+            timestamp: event_timestamp,
             icon: {
                 url: icon_url,
             }
@@ -132,7 +135,7 @@
     }
 
 
-    function createMapMarkerFromQuery(query, geocoder, map, event_zip, infostring, event_type) {
+    function createMapMarkerFromQuery(query, geocoder, map, event_zip, infostring, event_type, event_timestamp, event_date) {
         var request = {
             query: query,
             fields: ['geometry'],
@@ -140,7 +143,7 @@
 
         geocoder.findPlaceFromQuery(request, function (results, status) {
             if (status === 'OK') {
-                createMapMarker(results[0].geometry.location, map, event_zip, infostring, event_type);
+                createMapMarker(results[0].geometry.location, map, event_zip, infostring, event_type, event_timestamp, event_date);
             }
         });
     }
@@ -149,6 +152,17 @@
     function showAllMarkers(bool) {
         for (let i = 0; i < markers.length; i++) {
             if (bool) {
+                markers[i].setVisible(true);
+            } else {
+                markers[i].setVisible(false);
+            }
+        }
+    }
+
+    function showFutureEvents(){
+        const now = Date.now();
+        for (let i = 0; i < markers.length; i++) {
+            if (markers[i].timestamp > now) {
                 markers[i].setVisible(true);
             } else {
                 markers[i].setVisible(false);
