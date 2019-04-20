@@ -40,7 +40,6 @@
     <input onclick="showFutureEvents();" type=button value="Show Future">
     <input onclick="showMeetAndGreets();" type=button value="Meet And Greets">
     <input onclick="showHouseParties();" type=button value="House Parties">
-showFutureEvents
 </div>
 <div id="map"></div>
 <script>
@@ -110,7 +109,6 @@ showFutureEvents
         }
         var marker = new google.maps.Marker({
             map: resultsMap,
-            label: event_date,
             position: latlng,
             category: category,
             timestamp: event_timestamp,
@@ -162,7 +160,7 @@ showFutureEvents
     function showFutureEvents(){
         const now = Date.now();
         for (let i = 0; i < markers.length; i++) {
-            if (markers[i].timestamp > now) {
+            if (markers[i].timestamp*1000 > now) {
                 markers[i].setVisible(true);
             } else {
                 markers[i].setVisible(false);
