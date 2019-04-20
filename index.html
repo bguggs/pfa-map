@@ -51,13 +51,10 @@
     const mobilize_events_url = 'https://api.mobilize.us/v1/organizations/1297/events';
 
     function createMarkersForUrl(url, geocoder, map) {
-        console.log(url);
         if (url != null) {
             $.getJSON(url, function (response) {
-                console.log(response);
                 createMarkersForUrl(response['next'], geocoder, map);
                 const data = response['data'];
-                console.log(data);
                 $.each(data, function (index, event) {
                     const event_name = event['title'];
                     const event_timestamp = event['timeslots'][0]['start_date'];
@@ -101,11 +98,11 @@
     }
 
     function createMapMarker(latlng, resultsMap, infostring, category, event_timestamp, event_date) {
-        let icon_url =  "http://maps.google.com/mapfiles/ms/icons/gray-dot.png";
+        let icon_url = "https://maps.google.com/mapfiles/ms/icons/grey-dot.png";
         if (category === "MEET_GREET") {
-            icon_url = "http://maps.google.com/mapfiles/ms/icons/blue.png";
+            icon_url = "https://maps.google.com/mapfiles/ms/icons/blue.png";
         } else {
-            icon_url = "http://maps.google.com/mapfiles/ms/icons/grey.png";
+            icon_url = "https://maps.google.com/mapfiles/ms/icons/grey.png";
         }
         var marker = new google.maps.Marker({
             map: resultsMap,
