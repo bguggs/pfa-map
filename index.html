@@ -44,16 +44,16 @@
 <div id="map"></div>
 <script>
     let map = null;
-    let geocoder = null;
+    let places_service = null;
     let markers = [];
     let prevInfoWindow = false;
 
     const mobilize_events_url = 'https://api.mobilize.us/v1/organizations/1297/events';
 
-    function createMarkersForUrl(url, geocoder, map) {
+    function createMarkersForUrl(url, places_service, map) {
         if (url != null) {
             $.getJSON(url, function (response) {
-                createMarkersForUrl(response['next'], geocoder, map);
+                createMarkersForUrl(response['next'], places_service, map);
                 const data = response['data'];
                 $.each(data, function (index, event) {
                     const event_name = event['title'];
@@ -72,7 +72,7 @@
 
                     } else {
                         const event_zip = event['location']['postal_code'];
-                        createMapMarkerFromQuery(event_zip, geocoder, map, infostring, event_type, event_timestamp, event_date);
+                        createMapMarkerFromQuery(event_zip, places_service, map, infostring, event_type, event_timestamp, event_date);
                     }
 
                 });
@@ -100,7 +100,7 @@
     function createMapMarker(latlng, resultsMap, infostring, category, event_timestamp, event_date) {
         let icon_url = "https://maps.google.com/mapfiles/ms/icons/grey-dot.png";
         if (category === "MEET_GREET") {
-            icon_url = "https://maps.google.com/mapfiles/ms/icons/blue.png";
+            icon_url = "https://maps.google.com/mapfiles/ms/icons/green.png";
         } else {
             icon_url = "https://maps.google.com/mapfiles/ms/icons/grey.png";
         }
@@ -130,13 +130,13 @@
     }
 
 
-    function createMapMarkerFromQuery(query, geocoder, map, event_zip, infostring, event_type, event_timestamp, event_date) {
+    function createMapMarkerFromQuery(query, places_service, map, event_zip, infostring, event_type, event_timestamp, event_date) {
         var request = {
             query: query,
             fields: ['geometry'],
         };
 
-        geocoder.findPlaceFromQuery(request, function (results, status) {
+        places_service.findPlaceFromQuery(request, function (results, status) {
             if (status === 'OK') {
                 createMapMarker(results[0].geometry.location, map, event_zip, infostring, event_type, event_timestamp, event_date);
             }
@@ -201,8 +201,19 @@
             scaleControl: true
         });
 
-        geocoder = new google.maps.places.PlacesService(map);
-        createMarkersForUrl(mobilize_events_url, geocoder, map);
+        map.data.loadGeoJson('usa-2016-presidential-election-by-county.geojson');
+        map.data.setStyle(function(feature) {
+            var trump_votes = feature.getProperty('votes16_trumpd');
+            var clinton_votes = feature.getProperty('votes16_clintonh');
+            var color = clinton_votes > trump_votes ? 'blue' : 'red';
+            return {
+              fillColor: color,
+              strokeWeight: 1
+            };
+        });
+
+        places_service = new google.maps.places.PlacesService(map);
+        createMarkersForUrl(mobilize_events_url, places_service, map);
     }
 </script>
 <script async defer
