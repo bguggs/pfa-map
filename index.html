@@ -1,223 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
-    <title>Pete Events</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <style>
-        /* Always set the map height explicitly to define the size of the div
-         * element that contains the map. */
-        #map {
-            height: 100%;
-        }
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>PFA Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link href="map.css" rel="stylesheet">
+    <script src="map_all_candidates.js"></script>
 
-        /* Optional: Makes the sample page fill the window. */
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
-
-        #floating-panel {
-            position: absolute;
-            top: 10px;
-            left: 25%;
-            z-index: 5;
-            background-color: #fff;
-            padding: 5px;
-            border: 1px solid #999;
-            text-align: center;
-            font-family: 'Roboto', 'sans-serif';
-            line-height: 30px;
-            padding-left: 10px;
-        }
-    </style>
 </head>
+
 <body>
-<div id="floating-panel">
-    <input onclick="showMarkers();" type=button value="Show All">
-    <input onclick="showFutureEvents();" type=button value="Show Future">
-    <input onclick="showMeetAndGreets();" type=button value="Meet And Greets">
-    <input onclick="showHouseParties();" type=button value="House Parties">
+
+<div id="body">
+    <section id="main-content">
+        <div id="map"></div>
+    </section>
 </div>
-<div id="map"></div>
-<script>
-    let map = null;
-    let places_service = null;
-    let markers = [];
-    let prevInfoWindow = false;
+<div id="footer">
+    <!-- Footer -->
+    <footer class="py-5 bg-claeys-cream text-strato-blue">
+        <div class="container">
+            <p class="m-0 text-center">This site is not offiliated with the official Pete For America campaign.</p>
+        </div>
+    </footer>
+</div>
+<script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js"></script>
 
-    const mobilize_events_url = 'https://api.mobilize.us/v1/organizations/1297/events';
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
 
-    function createMarkersForUrl(url, places_service, map) {
-        if (url != null) {
-            $.getJSON(url, function (response) {
-                createMarkersForUrl(response['next'], places_service, map);
-                const data = response['data'];
-                $.each(data, function (index, event) {
-                    const event_name = event['title'];
-                    const event_timestamp = event['timeslots'][0]['start_date'];
-                    const event_img = event['featured_image_url'];
-                    const event_url = event['browser_url'];
-                    const event_date = timeConverter(event_timestamp);
-                    const event_desc = event['description'];
-                    const event_type = event['event_type'];
-                    const infostring = createInfoWindowDiv(event_name, event_date, event_desc, event_type, event_img, event_url);
-                    if ('location' in event['location']) {
-                        const event_lat = event['location']['location']['latitude'];
-                        const event_lng = event['location']['location']['longitude'];
-                        const event_loc = new google.maps.LatLng(event_lat, event_lng);
-                        createMapMarker(event_loc, map, infostring, event_type, event_timestamp, event_date);
-
-                    } else {
-                        const event_zip = event['location']['postal_code'];
-                        createMapMarkerFromQuery(event_zip, places_service, map, infostring, event_type, event_timestamp, event_date);
-                    }
-
-                });
-            });
-        }
-    }
-
-    function createInfoWindowDiv(title, date, description, type, img_url, event_url) {
-        return `<div><img class="featured_image" style="width:100%;" src="${img_url}"/><h1 class="firstHeading">${title}</h1><h4>${date} - <a href="${event_url}">${event_url}</a></h4><p>${description}</p></div>`
-
-    }
-
-    function timeConverter(UNIX_timestamp) {
-        var a = new Date(UNIX_timestamp * 1000);
-        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        var year = a.getFullYear();
-        var month = months[a.getMonth()];
-        var date = a.getDate();
-        var hour = a.getHours();
-        var min = a.getMinutes();
-        var sec = a.getSeconds();
-        return `${month} ${date}, ${year}`;
-    }
-
-    function createMapMarker(latlng, resultsMap, infostring, category, event_timestamp, event_date) {
-        let icon_url = "https://maps.google.com/mapfiles/ms/icons/grey-dot.png";
-        if (category === "MEET_GREET") {
-            icon_url = "https://maps.google.com/mapfiles/ms/icons/green.png";
-        } else {
-            icon_url = "https://maps.google.com/mapfiles/ms/icons/grey.png";
-        }
-        var marker = new google.maps.Marker({
-            map: resultsMap,
-            position: latlng,
-            category: category,
-            timestamp: event_timestamp,
-            icon: {
-                url: icon_url,
-            }
-        });
-
-        var infowindow = new google.maps.InfoWindow({
-            content: infostring
-        });
-
-        marker.addListener('click', function () {
-            if (prevInfoWindow) {
-                prevInfoWindow.close();
-            }
-            prevInfoWindow = infowindow;
-            infowindow.open(map, marker);
-        });
-
-        markers.push(marker);
-    }
-
-
-    function createMapMarkerFromQuery(query, places_service, map, event_zip, infostring, event_type, event_timestamp, event_date) {
-        var request = {
-            query: query,
-            fields: ['geometry'],
-        };
-
-        places_service.findPlaceFromQuery(request, function (results, status) {
-            if (status === 'OK') {
-                createMapMarker(results[0].geometry.location, map, event_zip, infostring, event_type, event_timestamp, event_date);
-            }
-        });
-    }
-
-
-    function showAllMarkers(bool) {
-        for (let i = 0; i < markers.length; i++) {
-            if (bool) {
-                markers[i].setVisible(true);
-            } else {
-                markers[i].setVisible(false);
-            }
-        }
-    }
-
-    function showFutureEvents(){
-        const now = Date.now();
-        for (let i = 0; i < markers.length; i++) {
-            if (markers[i].timestamp*1000 > now) {
-                markers[i].setVisible(true);
-            } else {
-                markers[i].setVisible(false);
-            }
-        }
-    }
-
-    function showOnlyCategory(category) {
-        for (let i = 0; i < markers.length; i++) {
-            if (markers[i].category === category) {
-                markers[i].setVisible(true);
-            } else {
-                markers[i].setVisible(false);
-            }
-        }
-    }
-
-    // Shows any markers currently in the array.
-    function showMarkers() {
-        showAllMarkers(true);
-    }
-
-    function showMeetAndGreets() {
-        showOnlyCategory("MEET_GREET");
-    }
-
-    function showHouseParties() {
-        showOnlyCategory("HOUSE_PARTY");
-    }
-
-    // Removes the markers from the map, but keeps them in the array.
-    function clearMarkers() {
-        showAllMarkers(false);
-    }
-
-    function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-            zoom: 5,
-            center: {lat: 39.8097343, lng: -98.5556199},
-            zoomControl: true,
-            scaleControl: true
-        });
-
-        map.data.loadGeoJson('usa-2016-presidential-election-by-county.geojson');
-        map.data.setStyle(function(feature) {
-            var trump_votes = feature.getProperty('votes16_trumpd');
-            var clinton_votes = feature.getProperty('votes16_clintonh');
-            var color = clinton_votes > trump_votes ? 'blue' : 'red';
-            return {
-              fillColor: color,
-              strokeWeight: 1
-            };
-        });
-
-        places_service = new google.maps.places.PlacesService(map);
-        createMarkersForUrl(mobilize_events_url, places_service, map);
-    }
-</script>
 <script async defer
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCwRVrS8bDrcRWsYblL-f-EX0i1ECVfkSY&callback=initMap&libraries=places">
 </script>
+
+
 </body>
 </html>
+
