@@ -3,8 +3,6 @@ let places_service = null;
 let markers = [];
 let prevInfoWindow = false;
 
-const mobilize_events_url = 'https://api.mobilize.us/v1/organizations/1297/events';
-
 function createMarkersForMobilizeUrl(url, places_service, map) {
     if (url != null) {
         $.getJSON(url, function (response) {
@@ -20,15 +18,16 @@ function createMarkersForMobilizeUrl(url, places_service, map) {
                 const candidate = event['sponsor']['candidate_name'];
                 const event_type = candidate;
                 const infostring = createInfoWindowDiv(event_name, event_date, event_desc, event_type, event_img, event_url);
-                if (event && 'location' in event['location']) {
-                    const event_lat = event['location']['location']['latitude'];
-                    const event_lng = event['location']['location']['longitude'];
-                    const event_loc = new google.maps.LatLng(event_lat, event_lng);
-                    createMapMarker(event_loc, map, infostring, event_type, event_timestamp, event_date);
-
-                } else {
-                    const event_zip = event['location']['postal_code'];
-                    createMapMarkerFromQuery(event_zip, places_service, map, infostring, event_type, event_timestamp, event_date);
+                if (event && event['location']) {
+                    if ('location' in event['location']) {
+                        const event_lat = event['location']['location']['latitude'];
+                        const event_lng = event['location']['location']['longitude'];
+                        const event_loc = new google.maps.LatLng(event_lat, event_lng);
+                        createMapMarker(event_loc, map, infostring, event_type, event_timestamp, event_date);
+                    } else {
+                        const event_zip = event['location']['postal_code'];
+                        createMapMarkerFromQuery(event_zip, places_service, map, infostring, event_type, event_timestamp, event_date);
+                    }
                 }
 
             });
@@ -36,21 +35,10 @@ function createMarkersForMobilizeUrl(url, places_service, map) {
     }
 }
 
-function createMarkersForActionNetworkEventCampaignUrl(url) {
-    if (url != null) {
-        $.ajax({
-            beforeSend: function (request) {
-                request.setRequestHeader("OSDI-API-Token", 'be3ff06b494e4034d93262a86366abd9');
-            },
-            dataType: "json",
-            url: url,
-            success: function (data) {
-                const events_url = data['_links']['osdi:events']['href'];
-                createMarkersForActionNetworkUrl(events_url);
-            }
-        });
-    }
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
+
 
 
 function createInfoWindowDiv(title, date, description, type, img_url, event_url) {
