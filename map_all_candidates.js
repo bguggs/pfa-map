@@ -177,7 +177,7 @@ function showMarkers() {
     showAllMarkers(true);
 }
 
-function showCampaignEvents() {
+function showCampaignEvents(candi) {
     showOnlyCategory("MEET_GREET");
 }
 
@@ -259,9 +259,14 @@ function initMap() {
         // constructor passing in this DIV.
         var centerControlDiv = document.createElement('div');
         new ShowControl(centerControlDiv, showAllMarkers, 'Show All', map);
-        new ShowControl(centerControlDiv, showCampaignEvents, 'Meet and Greets', map);
-        new ShowControl(centerControlDiv, showHouseParties, 'House Parties', map);
         new ShowControl(centerControlDiv, showFutureEvents, 'Upcoming', map);
+        new ShowControl(centerControlDiv, function() {showOnlyCategory("Elizabeth Warren")}, 'Warren', map);
+        new ShowControl(centerControlDiv, function() {showOnlyCategory("Pete Buttigieg")}, 'Buttigieg', map);
+        new ShowControl(centerControlDiv, function() {showOnlyCategory("Julián Castro")}, 'Castro', map);
+        new ShowControl(centerControlDiv, function() {showOnlyCategory("Cory Booker")}, 'Booker', map);
+        new ShowControl(centerControlDiv, function() {showOnlyCategory("Eric Swalwell")}, 'Swalwell', map);
+        new ShowControl(centerControlDiv, function() {showOnlyCategory("John Hickenlooper")}, 'Hickenlooper', map);
+        new ShowControl(centerControlDiv, function() {showOnlyCategory("")}, 'Other', map);
 
         centerControlDiv.index = 1;
         map.controls[google.maps.ControlPosition.LEFT_CENTER].push(centerControlDiv);
