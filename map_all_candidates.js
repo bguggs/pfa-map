@@ -19,7 +19,7 @@ const candidate_data = {
     harris: {
         icon_url: "map-icon-red.png",
         event_count: 0,
-        display_name: "harris",
+        display_name: "Harris",
         organization_ids: ["1264"]
     },
     buttigieg: {
