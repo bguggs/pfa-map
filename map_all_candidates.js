@@ -195,9 +195,9 @@ function showFutureEvents() {
     }
 }
 
-function showOnlyCategory(category) {
+function showOnlyCandidate(candidate) {
     for (let i = 0; i < markers.length; i++) {
-        if (markers[i].category === category) {
+        if (markers[i].candidate === candidate) {
             markers[i].setVisible(true);
         } else {
             markers[i].setVisible(false);
@@ -266,7 +266,7 @@ function initMap() {
         for (const [candidate, dict] of Object.entries(candidate_data)) {
             // Create filter button
           new ShowControl(centerControlDiv, function () {
-            showOnlyCategory(candidate)
+            showOnlyCandidate(candidate)
             }, dict['display_name'], map);
 
             // create markers for organizations
