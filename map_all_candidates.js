@@ -3,160 +3,176 @@ let places_service = null;
 let markers = [];
 let prevInfoWindow = false;
 
+const candidate_data = {
+    swalwell: {
+        icon_url: "map-icon-orange.png",
+        event_count: 0,
+        display_name: "Swalwell",
+        organization_ids: ["1116"]
+    },
+    gillebrand: {
+        icon_url: "map-icon-yellow.png",
+        event_count: 0,
+        display_name: "Gillebrand",
+        organization_ids: ["1263"]
+    },
+    harris: {
+        icon_url: "map-icon-red.png",
+        event_count: 0,
+        display_name: "harris",
+        organization_ids: ["1264"]
+    },
+    buttigieg: {
+        icon_url: "map-icon-green.png",
+        event_count: 0,
+        display_name: "Buttigieg",
+        organization_ids: ["1297"]
+    },
+    warren: {
+        icon_url: "map-icon-light-blue.png",
+        event_count: 0,
+        display_name: "Warren",
+        organization_ids: ["1361", "1416", "1360", "1316", "1310"]
+    },
+    castro: {
+        icon_url: "map-icon-magenta.png",
+        event_count: 0,
+        display_name: "Castro",
+        organization_ids: ["1362"]
+    },
+    ryan: {
+        icon_url: "map-icon-black.png",
+        event_count: 0,
+        display_name: "Ryan",
+        organization_ids: ["1392"]
+    },
+    biden: {
+        icon_url: "map-icon-purple.png",
+        event_count: 0,
+        display_name: "Biden",
+        organization_ids: ["1393"]
+    },
+    yang: {
+        icon_url: "map-icon-pink.png",
+        event_count: 0,
+        display_name: "Yang",
+        organization_ids: ["1396"]
+    },
+    hickenlooper: {
+        icon_url: "map-icon-teal.png",
+        event_count: 0,
+        display_name: "Hickenlooper",
+        organization_ids: ["1415", "1295"]
+    },
+    booker: {
+        icon_url: "map-icon-gray.png",
+        event_count: 0,
+        display_name: "Booker",
+        organization_ids: ["1435", "1436", "1374", "1354", "1360", "1270"]
+    },
+};
+
+class Event {
+    constructor(title, timestamp, desc, candidate, image_url, external_url) {
+        this.title = title;
+        this.timestamp = timestamp;
+        this.description = desc;
+        this.candidate = candidate;
+        this.image_url = image_url;
+        this.external_url = external_url;
+    }
+
+    formattedDate() {
+     const a = new Date(this.timestamp * 1000);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const year = a.getFullYear();
+        const month = months[a.getMonth()];
+        const date = a.getDate();
+        const hour = a.getHours();
+        const min = a.getMinutes();
+        const sec = a.getSeconds();
+        return `${month} ${date}, ${year}`;
+    }
+
+    createMapMarker(event_location, map){
+        const organization = candidate_data[this.candidate];
+        const icon_url = organization['icon_url'];
+        organization['event_count'] = organization['event_count'] + 1
+
+        const scaled_icon = {
+            url: icon_url,
+            size: new google.maps.Size(16, 16),
+            scaledSize: new google.maps.Size(12, 12),
+        };
+
+        const marker = new google.maps.Marker({
+            map: map,
+            position: event_location,
+            candidate: this.candidate,
+            timestamp: this.timestamp,
+            icon: scaled_icon,
+            opacity: 0.5,
+        });
+
+        const infowindow = new google.maps.InfoWindow({
+            content: this.formattedInfoWindow(),
+        });
+
+        marker.addListener('click', function () {
+            if (prevInfoWindow) {
+                prevInfoWindow.close();
+            }
+            prevInfoWindow = infowindow;
+            infowindow.open(map, marker);
+        });
+
+        markers.push(marker);
+    }
+
+    createMapMarkerFromQuery(location_query, places_service, map) {
+        const this_event = this; // declare for use in nested function
+        const request = {
+            query: location_query,
+            fields: ['geometry'],
+        };
+        places_service.findPlaceFromQuery(request, function (results, status) {
+            if (status === 'OK') {
+                this_event.createMapMarker(results[0].geometry.location, map);
+            }
+        });
+    }
+
+
+    formattedInfoWindow() {
+        return `<div class="text-strato-blue"><img class="featured_image" style="width:100%;" src="${this.image_url}"/><h2 class="mt-3">${candidate_data[this.candidate]['display_name']} - ${this.title}</h2><span class="intro mb-2">${this.formattedDate()} - <a href="${this.external_url}">${this.external_url}</a></span><p>${this.description}</p></div>`
+    }
+
+
+}
+
 function createMarkersForMobilizeUrl(url, places_service, map, candidate) {
-    const category = candidate;
     if (url != null) {
         $.getJSON(url, function (response) {
-            createMarkersForMobilizeUrl(response['next'], places_service, map, candidate);
+            createMarkersForMobilizeUrl(response['next'], places_service, map, candidate); // launch for next url
             const data = response['data'];
             $.each(data, function (index, event) {
-                const event_name = event['title'];
-                const event_timestamp = event['timeslots'][0]['start_date'];
-                const event_img = event['featured_image_url'];
-                const event_url = event['browser_url'];
-                const event_date = timeConverter(event_timestamp);
-                const event_desc = event['description'];
-                const infostring = createInfoWindowDiv(event_name, event_date, event_desc, category, event_img, event_url);
+                const e = new Event(event['title'], event['timeslots'][0]['start_date'], event['description'],
+                    candidate, event['featured_image_url'], event['browser_url'], candidate);
                 if (event && event['location']) {
                     if ('location' in event['location']) {
-                        const event_lat = event['location']['location']['latitude'];
-                        const event_lng = event['location']['location']['longitude'];
-                        const event_loc = new google.maps.LatLng(event_lat, event_lng);
-                        createMapMarker(event_loc, map, infostring, category, event_timestamp, event_date);
+                        const event_loc = new google.maps.LatLng(event['location']['location']['latitude'],
+                            event['location']['location']['longitude']);
+                        e.createMapMarker(event_loc, map);
                     } else {
                         const event_zip = event['location']['postal_code'];
-                        createMapMarkerFromQuery(event_zip, places_service, map, infostring, category, event_timestamp, event_date);
-                        }
+                        e.createMapMarkerFromQuery(event_zip, places_service, map);
+                    }
                 }
 
             });
         });
     }
 }
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-
-
-function createInfoWindowDiv(title, date, description, type, img_url, event_url) {
-    return `<div class="text-strato-blue"><img class="featured_image" style="width:100%;" src="${img_url}"/><h2 class="mt-3">${title}</h2><span class="intro mb-2">${date} - <a href="${event_url}">${event_url}</a></span><p>${description}</p></div>`
-
-}
-
-function timeConverter(UNIX_timestamp) {
-    var a = new Date(UNIX_timestamp * 1000);
-    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var year = a.getFullYear();
-    var month = months[a.getMonth()];
-    var date = a.getDate();
-    var hour = a.getHours();
-    var min = a.getMinutes();
-    var sec = a.getSeconds();
-    return `${month} ${date}, ${year}`;
-}
-
-let count_dict = {
-    count: 0,
-    warren: 0,
-    buttigieg: 0,
-    castro: 0,
-    booker: 0,
-    swalwell: 0,
-    hickenlooper: 0,
-    biden: 0,
-    gillebrand:0,
-    ryan:0,
-    yang: 0,
-    harris: 0,
-    other: 0,
-};
-
-function createMapMarker(latlng, resultsMap, infostring, category, event_timestamp, event_date) {
-    count_dict['count'] = count_dict['count'] + 1;
-    let icon_url = "map-icon-blue.png";
-    if (category === "warren") {
-        count_dict['warren'] = count_dict['warren'] + 1;
-        icon_url = "map-icon-orange.png";
-    } else if (category === "buttigieg") {
-        count_dict['buttigieg'] = count_dict['buttigieg'] + 1;
-        icon_url = "map-icon-yellow.png";
-    } else if (category === "castro") {
-        count_dict['castro'] = count_dict['castro'] + 1;
-        icon_url = "map-icon-red.png";
-    } else if (category === "booker") {
-        count_dict['booker'] = count_dict['booker'] + 1;
-        icon_url = "map-icon-green.png";
-    } else if (category === "swalwell") {
-        count_dict['swalwell'] = count_dict['swalwell'] + 1;
-        icon_url = "map-icon-light-blue.png";
-    } else if (category === "hickenlooper") {
-        count_dict['hickenlooper'] = count_dict['hickenlooper'] + 1;
-        icon_url = "map-icon-magenta.png";
-    } else if (category === "biden") {
-        count_dict['biden'] = count_dict['biden'] + 1;
-        icon_url = "map-icon-black.png";
-    }  else if (category === "gillebrand") {
-        count_dict['gillebrand'] = count_dict['gillebrand'] + 1;
-        icon_url = "map-icon-purple.png";
-    }  else if (category === "ryan") {
-        count_dict['ryan'] = count_dict['ryan'] + 1;
-        icon_url = "map-icon-pink.png";
-    }   else if (category === "harris") {
-        count_dict['harris'] = count_dict['harris'] + 1;
-        icon_url = "map-icon-teal.png";
-    }  else if (category === "yang") {
-        count_dict['yang'] = count_dict['yang'] + 1;
-        icon_url = "map-icon-gray.png";
-    } else {
-        console.log(category);
-        count_dict['other'] = count_dict['other'] + 1;
-    }
-    const icon = {
-        url: icon_url,
-        size: new google.maps.Size(16, 16),
-        scaledSize: new google.maps.Size(12, 12),
-    };
-
-    var marker = new google.maps.Marker({
-        map: resultsMap,
-        position: latlng,
-        category: category,
-        timestamp: event_timestamp,
-        icon: icon,
-        opacity: 0.5,
-    });
-
-    var infowindow = new google.maps.InfoWindow({
-        content: infostring
-    });
-
-    marker.addListener('click', function () {
-        if (prevInfoWindow) {
-            prevInfoWindow.close();
-        }
-        prevInfoWindow = infowindow;
-        infowindow.open(map, marker);
-    });
-
-    markers.push(marker);
-}
-
-
-function createMapMarkerFromQuery(query, places_service, map, infostring, category, event_timestamp, event_date) {
-    var request = {
-        query: query,
-        fields: ['geometry'],
-    };
-
-    places_service.findPlaceFromQuery(request, function (results, status) {
-        if (status === 'OK') {
-            createMapMarker(results[0].geometry.location, map, infostring, category, event_timestamp, event_date)
-        }
-    });
-}
-
 
 function showAllMarkers(bool) {
     for (let i = 0; i < markers.length; i++) {
@@ -189,24 +205,6 @@ function showOnlyCategory(category) {
     }
 }
 
-// Shows any markers currently in the array.
-function showMarkers() {
-    showAllMarkers(true);
-}
-
-function showCampaignEvents(candi) {
-    showOnlyCategory("MEET_GREET");
-}
-
-function showHouseParties() {
-    showOnlyCategory("HOUSE_PARTY");
-}
-
-// Removes the markers from the map, but keeps them in the array.
-function clearMarkers() {
-    showAllMarkers(false);
-}
-
 function ShowControl(controlDiv, f, title, map) {
 
     // Set CSS for the control border.
@@ -235,25 +233,6 @@ function ShowControl(controlDiv, f, title, map) {
 
 }
 
-function perc2color(perc) {
-    if (perc < 30) {
-        return "#FFF";
-    } else if (perc < 35) {
-        return "#CCC";
-    } else if (perc < 40) {
-        return "#AAA";
-    } else if (perc < 45) {
-        return "#888";
-    } else if (perc < 50) {
-        return "#666";
-    } else if (perc < 55) {
-        return "#444";
-    } else {
-        return "#222";
-    }
-}
-
-
 function initMap() {
     $.getJSON("map-options.json", function (mapstyle) {
         map = new google.maps.Map(document.getElementById('map'), {
@@ -275,42 +254,30 @@ function initMap() {
         // Create the DIV to hold the control and call the CenterControl()
         // constructor passing in this DIV.
         var centerControlDiv = document.createElement('div');
-        new ShowControl(centerControlDiv, showAllMarkers, 'Show All', map);
-        new ShowControl(centerControlDiv, showFutureEvents, 'Upcoming', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("warren")}, 'Warren', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("buttigieg")}, 'Buttigieg', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("castro")}, 'Castro', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("booker")}, 'Booker', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("swalwell")}, 'Swalwell', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("hickenlooper")}, 'Hickenlooper', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("biden")}, 'Biden', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("gillebrand")}, 'Gillebrand', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("harris")}, 'Harris', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("ryan")}, 'Ryan', map);
-        new ShowControl(centerControlDiv, function() {showOnlyCategory("yang")}, 'Yang', map);
-
         centerControlDiv.index = 1;
         map.controls[google.maps.ControlPosition.LEFT_CENTER].push(centerControlDiv);
-        places_service = new google.maps.places.PlacesService(map);
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1116/events', places_service, map, "swalwell");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1263/events', places_service, map, "gillebrand");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1264/events', places_service, map, "harris");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1270/events', places_service, map, "booker");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1295/events', places_service, map, "hickenlooper");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1297/events', places_service, map, "buttigieg");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1310/events', places_service, map, "warren");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1316/events', places_service, map, "warren");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1354/events', places_service, map, "booker");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1360/events', places_service, map, "warren");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1361/events', places_service, map, "warren");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1362/events', places_service, map, "castro");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1374/events', places_service, map, "booker");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1392/events', places_service, map, "ryan");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1393/events', places_service, map, "biden");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1396/events', places_service, map, "yang");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1415/events', places_service, map, "hickenlooper");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1416/events', places_service, map, "warren");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1435/events', places_service, map, "booker");
-        createMarkersForMobilizeUrl('https://api.mobilize.us/v1/organizations/1436/events', places_service, map, "booker");
+
+        // Create global controls
+        new ShowControl(centerControlDiv, showAllMarkers, 'Show All', map);
+        new ShowControl(centerControlDiv, showFutureEvents, 'Upcoming', map);
+
+        places_service = new google.maps.places.PlacesService(map); // initialize the places service for location queries
+
+        for (const [candidate, dict] of Object.entries(candidate_data)) {
+            // Create filter button
+          new ShowControl(centerControlDiv, function () {
+            showOnlyCategory(candidate)
+            }, dict['display_name'], map);
+
+            // create markers for organizations
+            for (let i = 0; i < dict['organization_ids'].length; i++) {
+                const org_id = dict['organization_ids'][i];
+                const mobilize_url = `https://api.mobilize.us/v1/organizations/${org_id}/events`; // events api url for mobilize org
+                createMarkersForMobilizeUrl(mobilize_url, places_service, map, candidate);
+            }
+        }
     });
 }
+
+
+
