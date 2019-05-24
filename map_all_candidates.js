@@ -10,10 +10,10 @@ const candidate_data = {
         display_name: "Swalwell",
         organization_ids: ["1116"]
     },
-    gillebrand: {
+    gillibrand: {
         icon_url: "map-icon-yellow.png",
         event_count: 0,
-        display_name: "Gillebrand",
+        display_name: "Gillibrand",
         organization_ids: ["1263"]
     },
     harris: {
